@@ -9,16 +9,14 @@ setup(
     author="Noobaa SA QE",
     author_email="ocs-ci@redhat.com",
     description=(
-        "Noobaa Standalone(SA) CI is used to deploy noobaa as standalone "
-        "on RHEL/CentOS stream platforms"
+        "Noobaa Standalone(SA) infra is used to deploy, upgrade and destroy NooBaa standalone on "
+        "RHEL/CentOS stream platforms"
     ),
     install_requires=[
-        "jinja2",
         "mergedeep",
         "pytest",
         "pynpm",
-        "pyyaml",
-        "requests",
+        "pyyaml"
     ],
     entry_points={
         "console_scripts": [

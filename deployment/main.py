@@ -8,7 +8,7 @@ import yaml
 
 # Directories
 TOP_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-TEMPLATE_DIR = os.path.join(TOP_DIR, "noobaa-sa-ci", "templates")
+TEMPLATE_DIR = os.path.join(TOP_DIR, "noobaa-sa-infra", "templates")
 
 
 def process_arguments(arguments):

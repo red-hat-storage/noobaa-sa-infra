@@ -1,4 +1,5 @@
 import logging
+
 from pynpm import NPMPackage
 
 log = logging.getLogger(__name__)

@@ -1,23 +1,20 @@
 import logging
 import os
-import requests
-import tempfile
 import time
+
+from common_ci_utils.command_runner import exec_cmd
+from common_ci_utils.exceptions import (
+    AggregateNodeStatusCheckFailed,
+    StorageStatusCheckFailed,
+)
+from common_ci_utils.file_system_utils import create_directory, set_permissions
+from common_ci_utils.host_info import get_ip_address
+from common_ci_utils.package_fetcher import download_rpm
+from common_ci_utils.postgres_utils import enable_postgresql_version
+from common_ci_utils.rpm_manager import install_rpm
+from common_ci_utils.templating import Templating
 from deployment.npm import NPM
 from framework import config
-from utility.templating import Templating
-from utility.exceptions import (
-    StorageStatusCheckFailed,
-    AggregateNodeStatusCheckFailed,
-)
-from utility.utils import (
-    install_rpm,
-    enable_postgresql_version,
-    create_directory,
-    set_permissions,
-    exec_cmd,
-    get_ip_address,
-)
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +44,7 @@ class Deployment(object):
         """
         log.info("Installing Noobaa Standalone")
         # install noobaa standalone rpm
-        rpm_path = self.download_rpm(rpm_url=self.rpm_url)
+        rpm_path = download_rpm(rpm_url=self.rpm_url)
         install_rpm(rpm_path=rpm_path)
 
         # enable postgres repo
@@ -138,43 +135,6 @@ class Deployment(object):
 
         # switch to original directory
         os.chdir(previous_dir)
-
-    def download_rpm(self, rpm_url):
-        """
-        Downloads RPM
-
-        Args:
-            rpm_url (str): RPM URL to download
-
-        Returns:
-            str: Path to RPM file
-
-        Raise:
-            requests.RequestException: In case rpm failed to download
-
-        """
-        # Path to save the RPM package
-        rpm_name, rpm_ext = os.path.splitext(os.path.split(rpm_url)[1])
-        rpm_file = tempfile.NamedTemporaryFile(
-            mode="w+", prefix=f"{rpm_name}_", suffix=f"{rpm_ext}", delete=False
-        )
-        rpm_file_name = rpm_file.name
-
-        try:
-            # Send an HTTP GET request to download the RPM package
-            response = requests.get(rpm_url)
-            response.raise_for_status()
-
-            # Open a local file and write the RPM content to it
-            with open(rpm_file_name, "wb") as f:
-                f.write(response.content)
-            log.info(f"Downloaded RPM package to {rpm_file_name}")
-            return rpm_file_name
-
-        except requests.exceptions.RequestException as ex:
-            raise requests.RequestException(
-                f"Failed to download RPM package. Exception: {ex}"
-            )
 
     def initialize_db(self):
         """
@@ -284,7 +244,7 @@ class Deployment(object):
         Creates .env file
         """
         log.info("creating .env file")
-        templating = Templating()
+        templating = Templating(base_path=config.ENV_DATA["template_dir"])
         env_template = "env.j2"
         env_str = templating.render_template(env_template, config.ENV_DATA)
         env_file = config.ENV_DATA["env_file"]
