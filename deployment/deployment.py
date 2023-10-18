@@ -42,7 +42,6 @@ class Deployment(object):
         """
         Installs Noobaa Standalone deployment
         """
-        log.info("Installing Noobaa Standalone")
         # install noobaa standalone rpm
         rpm_path = download_rpm(rpm_url=self.rpm_url)
         install_rpm(rpm_path=rpm_path)
@@ -58,11 +57,7 @@ class Deployment(object):
 
         # set permissions
         noobaa_core_dir = config.ENV_DATA["noobaa_core_dir"]
-        set_permissions(
-            directory_path=noobaa_core_dir,
-            permissions=777,
-            use_sudo=True
-        )
+        set_permissions(directory_path=noobaa_core_dir, permissions=777, use_sudo=True)
 
         # create storage directory
         previous_dir = os.getcwd()
@@ -73,11 +68,7 @@ class Deployment(object):
 
         # set permissions to postgresql
         postgresql_dir = config.ENV_DATA["postgresql_dir"]
-        set_permissions(
-            directory_path=postgresql_dir,
-            permissions=777,
-            use_sudo=True
-        )
+        set_permissions(directory_path=postgresql_dir, permissions=777, use_sudo=True)
 
         # initialize database directory
         self.initialize_db()
@@ -108,9 +99,7 @@ class Deployment(object):
 
         # create backingstore drives
         backing_stores = config.DEPLOYMENT["backing_stores"]
-        backing_store_drive_port = (
-            config.DEPLOYMENT["backing_store_drive_port"]
-        )
+        backing_store_drive_port = config.DEPLOYMENT["backing_store_drive_port"]
         for num in range(backing_stores):
             backing_store_path = config.DEPLOYMENT["backing_store_drive_path"]
             backing_store_drive = os.path.join(
@@ -122,8 +111,7 @@ class Deployment(object):
             # run backingstore
             backing_store_drive_port += 1
             self.run_backingstore(
-                backingstore_path=backing_store_drive,
-                port=backing_store_drive_port
+                backingstore_path=backing_store_drive, port=backing_store_drive_port
             )
             time.sleep(self.sleep)
 
@@ -260,8 +248,14 @@ class Deployment(object):
         Creates config-local
         """
         log.info("creating config-local.js file")
-        config_local = os.path.join(
-            config.ENV_DATA["template_dir"], "config-local.js"
-        )
+        config_local = os.path.join(config.ENV_DATA["template_dir"], "config-local.js")
         cmd = f'cp {config_local} {config.ENV_DATA["config_local"]}'
         exec_cmd(cmd=cmd, use_sudo=True)
+
+
+def deploy():
+    """
+    Deploys NooBaa as a Standalone
+    """
+    dep = Deployment()
+    dep.install_noobaa_sa()

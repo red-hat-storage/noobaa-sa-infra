@@ -13,8 +13,8 @@ setup(
         "RHEL/CentOS stream platforms"
     ),
     install_requires=[
+        "common-ci-utils",
         "mergedeep",
-        "pytest",
         "pynpm",
         "pyyaml"
     ],

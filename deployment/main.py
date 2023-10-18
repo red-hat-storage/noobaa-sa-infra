@@ -1,9 +1,13 @@
 import argparse
 import framework
 import os
-import pytest
 import sys
 import yaml
+
+from deployment.deployment import deploy
+from framework.customizations.logging import logging
+
+log = logging.getLogger(__name__)
 
 
 # Directories
@@ -52,7 +56,8 @@ def load_args(argv=None):
 
 def noobaa_sa_install():
     """
-    Installs NooBaa Standalone with pytest
+    Installs NooBaa Standalone
     """
+    log.info("Installing Noobaa Standalone")
     load_args()
-    return pytest.main(['-v', 'tests/deployment/test_deployment.py'])
+    deploy()

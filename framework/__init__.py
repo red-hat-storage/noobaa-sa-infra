@@ -1,11 +1,9 @@
-import logging
 import os
 import yaml
 
 from dataclasses import dataclass, field, fields
 from mergedeep import merge
 
-log = logging.getLogger(__name__)
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_CONFIG_PATH = os.path.join(THIS_DIR, "default_config.yaml")
