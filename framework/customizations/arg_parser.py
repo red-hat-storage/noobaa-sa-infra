@@ -21,10 +21,36 @@ def process_arguments(arguments):
         arguments (list): List of arguments
 
     """
-    parser = argparse.ArgumentParser(add_help=False)
+    parser = argparse.ArgumentParser(add_help=True)
     parser.add_argument("--conf", action="append", default=[])
 
+    # Create a mutually exclusive group for nsfs and db
+    group = parser.add_mutually_exclusive_group()
+
+    # Add the options to the mutually exclusive group
+    group.add_argument(
+        "--nsfs",
+        action="store_true",
+        help="""Install NooBaa Standalone with NSFS""",
+    )
+    group.add_argument(
+        "--db",
+        action="store_true",
+        help="""Install NooBaa Standalone with db""",
+    )
+
     args, unknown = parser.parse_known_args(args=arguments)
+    nsfs_installation = args.nsfs
+    db_installation = args.db
+
+    # Check if neither nsfs nor db is specified
+    if not (nsfs_installation or db_installation):
+        parser.error("One of --nsfs or --db must be specified.")
+
+    # load nsfs_installation and db_installation values to config
+    framework.config.ENV_DATA["nsfs_installation"] = nsfs_installation
+    framework.config.ENV_DATA["db_installation"] = db_installation
+
     load_config(args.conf)
 
 
