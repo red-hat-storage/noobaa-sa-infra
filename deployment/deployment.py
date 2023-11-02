@@ -5,6 +5,7 @@ import time
 from common_ci_utils.command_runner import exec_cmd
 from common_ci_utils.exceptions import (
     AggregateNodeStatusCheckFailed,
+    ServiceRunningFailed,
     StorageStatusCheckFailed,
 )
 from common_ci_utils.file_system_utils import create_directory, set_permissions
@@ -12,6 +13,7 @@ from common_ci_utils.host_info import get_ip_address
 from common_ci_utils.package_fetcher import download_rpm
 from common_ci_utils.postgres_utils import enable_postgresql_version
 from common_ci_utils.rpm_manager import install_rpm
+from common_ci_utils.service_manager import is_service_running, start_service
 from common_ci_utils.templating import Templating
 from deployment.npm import NPM
 from framework import config
@@ -30,21 +32,79 @@ class Deployment(object):
         Noobaa Standalone Deployment
         """
         self.rpm_url = config.ENV_DATA["noobaa_sa"]
+
+    def install_rpm(self):
+        """
+        Install rpm
+        """
+        rpm_path = download_rpm(rpm_url=self.rpm_url)
+        install_rpm(rpm_path=rpm_path)
+
+
+class DeploymentNSFS(Deployment):
+    """
+    NooBaa Standalone deployment with NSFS
+    """
+
+    def __init__(self):
+        """
+        Initializes the necessary variables and install rpm needed for
+        Noobaa SA Deployment with NSFS
+        """
+        super().__init__()
+        self.install_rpm()
+
+    def install_noobaa_sa_nsfs(self):
+        """
+        Deploys NooBaa SA with NSFS
+        """
+        log.info("Installing Noobaa Standalone with NSFS")
+
+        # create "noobaa.conf.d" directory
+        noobaa_conf_dir = config.ENV_DATA["noobaa_conf_dir"]
+        cmd = f"mkdir -p {noobaa_conf_dir}"
+        exec_cmd(cmd=cmd, use_sudo=True)
+
+        # create symbolic link
+        source_path = config.ENV_DATA["nsfs_env"]
+        target_path = os.path.join(noobaa_conf_dir, ".env")
+        cmd = f"ln -s {source_path} {target_path}"
+        exec_cmd(cmd=cmd, use_sudo=True)
+
+        # start nsfs service
+        start_service(name="nsfs", use_sudo=True)
+
+        # checks nsfs service
+        is_nsfs_running = is_service_running(name="nsfs", use_sudo=True)
+        if not is_nsfs_running:
+            raise ServiceRunningFailed("nsfs service is not running")
+
+
+class DeploymentDB(Deployment):
+    """
+    NooBaa Standalone deployment with DB
+    """
+
+    def __init__(self):
+        """
+        Initializes the necessary variables and install rpm needed for
+        Noobaa SA Deployment with DB
+        """
+        super().__init__()
         self.postgres_repo = config.ENV_DATA["postgres_repo"]
         self.packages = config.ENV_DATA["db_packages"]
         self.postgresql_version = config.ENV_DATA["postgresql_version"]
         self.package = config.ENV_DATA["package_json"]
         self.npm = NPM(self.package)
         config.ENV_DATA["ip_address"] = get_ip_address()
+        self.install_rpm()
         self.sleep = 10
 
-    def install_noobaa_sa(self):
+    def install_noobaa_sa_db(self):
         """
-        Installs Noobaa Standalone deployment
+        Installs Noobaa Standalone deployment with DB
         """
-        # install noobaa standalone rpm
-        rpm_path = download_rpm(rpm_url=self.rpm_url)
-        install_rpm(rpm_path=rpm_path)
+        log.info("Installing Noobaa Standalone with DB")
 
         # enable postgres repo
         install_rpm(rpm_path=self.postgres_repo)
@@ -257,5 +317,9 @@ def deploy():
     """
     Deploys NooBaa as a Standalone
     """
-    dep = Deployment()
-    dep.install_noobaa_sa()
+    if config.ENV_DATA["db_installation"]:
+        dep = DeploymentDB()
+        dep.install_noobaa_sa_db()
+    if config.ENV_DATA["nsfs_installation"]:
+        dep = DeploymentNSFS()
+        dep.install_noobaa_sa_nsfs()
