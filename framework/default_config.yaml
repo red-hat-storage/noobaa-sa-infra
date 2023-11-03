@@ -1,6 +1,8 @@
 ---
 ENV_DATA:
   noobaa_core_dir: "/usr/local/noobaa-core"
+  noobaa_conf_dir: "/etc/noobaa.conf.d"
+  nsfs_env: "/usr/local/noobaa-core/nsfs_env.env"
   package_json: "/usr/local/noobaa-core/package.json"
   storage_dir: "/usr/local/noobaa-core/storage"
   postgresql_dir: "/var/run/postgresql"
