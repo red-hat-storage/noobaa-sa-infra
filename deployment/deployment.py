@@ -53,6 +53,8 @@ class DeploymentNSFS(Deployment):
         """
         super().__init__()
         self.install_rpm()
+        node_rel_path = "node/bin/node"
+        self.node_path = os.path.join(config.ENV_DATA["noobaa_core_dir"], node_rel_path)
 
     def install_noobaa_sa_nsfs(self):
         """
@@ -78,6 +80,12 @@ class DeploymentNSFS(Deployment):
         is_nsfs_running = is_service_running(name="nsfs", use_sudo=True)
         if not is_nsfs_running:
             raise ServiceRunningFailed("nsfs service is not running")
+
+        # create symbolic link for node
+        source_node_path = self.node_path
+        target_node_path = os.path.join(config.ENV_DATA["bin_dir"], config.ENV_DATA["node_cmd"])
+        cmd = f"ln -s {source_node_path} {target_node_path}"
+        exec_cmd(cmd=cmd, use_sudo=True)
 
 
 class DeploymentDB(Deployment):
