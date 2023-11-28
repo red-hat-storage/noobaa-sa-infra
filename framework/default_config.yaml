@@ -1,7 +1,9 @@
 ---
 ENV_DATA:
+  bin_dir: "/usr/local/bin"
   noobaa_core_dir: "/usr/local/noobaa-core"
   noobaa_conf_dir: "/etc/noobaa.conf.d"
+  node_cmd: "node"
   nsfs_env: "/usr/local/noobaa-core/nsfs_env.env"
   package_json: "/usr/local/noobaa-core/package.json"
   storage_dir: "/usr/local/noobaa-core/storage"
