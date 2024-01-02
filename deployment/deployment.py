@@ -73,13 +73,13 @@ class DeploymentNSFS(Deployment):
         cmd = f"ln -s {source_path} {target_path}"
         exec_cmd(cmd=cmd, use_sudo=True)
 
-        # start nsfs service
-        start_service(name="nsfs", use_sudo=True)
+        # start noobaa_nsfs service
+        start_service(name="noobaa_nsfs", use_sudo=True)
 
-        # checks nsfs service
-        is_nsfs_running = is_service_running(name="nsfs", use_sudo=True)
+        # checks noobaa_nsfs service
+        is_nsfs_running = is_service_running(name="noobaa_nsfs", use_sudo=True)
         if not is_nsfs_running:
-            raise ServiceRunningFailed("nsfs service is not running")
+            raise ServiceRunningFailed("noobaa_nsfs service is not running")
 
         # create symbolic link for node
         source_node_path = self.node_path
