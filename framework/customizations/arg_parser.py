@@ -23,6 +23,12 @@ def process_arguments(arguments):
     """
     parser = argparse.ArgumentParser(add_help=True)
     parser.add_argument("--conf", action="append", default=[])
+    parser.add_argument(
+        "--rpm",
+        action="store",
+        required=False,
+        help="RPM location to download and install",
+    )
 
     # Create a mutually exclusive group for nsfs and db
     group = parser.add_mutually_exclusive_group()
@@ -42,6 +48,7 @@ def process_arguments(arguments):
     args, unknown = parser.parse_known_args(args=arguments)
     nsfs_installation = args.nsfs
     db_installation = args.db
+    rpm = args.rpm
 
     # Check if neither nsfs nor db is specified
     if not (nsfs_installation or db_installation):
@@ -52,6 +59,10 @@ def process_arguments(arguments):
     framework.config.ENV_DATA["db_installation"] = db_installation
 
     load_config(args.conf)
+
+    # load rpm to config if rpm parameter is passed
+    if rpm:
+        framework.config.ENV_DATA["noobaa_sa"] = rpm
 
 
 def load_config(config_files):

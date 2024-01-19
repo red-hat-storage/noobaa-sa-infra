@@ -83,7 +83,9 @@ class DeploymentNSFS(Deployment):
 
         # create symbolic link for node
         source_node_path = self.node_path
-        target_node_path = os.path.join(config.ENV_DATA["bin_dir"], config.ENV_DATA["node_cmd"])
+        target_node_path = os.path.join(
+            config.ENV_DATA["bin_dir"], config.ENV_DATA["node_cmd"]
+        )
         cmd = f"ln -s {source_node_path} {target_node_path}"
         exec_cmd(cmd=cmd, use_sudo=True)
 
