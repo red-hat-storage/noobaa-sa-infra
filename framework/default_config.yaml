@@ -15,3 +15,5 @@ DEPLOYMENT:
   backing_store_drive_path: "/usr/local/noobaa-core/storage/backingstores"
   backing_store_drive_prefix: "drive"
   backing_store_drive_port: 9990
+  rpm_s3_base_url: "https://noobaa-core-rpms.s3.amazonaws.com"
+  rpm_pattern: "noobaa-core-.*\\.el9\\.x86_64\\.rpm"

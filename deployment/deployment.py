@@ -1,6 +1,10 @@
 import logging
 import os
+import re
+import requests
 import time
+from datetime import datetime
+import xml.etree.ElementTree as ET
 
 from common_ci_utils.command_runner import exec_cmd
 from common_ci_utils.exceptions import (
@@ -16,7 +20,7 @@ from common_ci_utils.rpm_manager import install_rpm
 from common_ci_utils.service_manager import is_service_running, start_service
 from common_ci_utils.templating import Templating
 from deployment.npm import NPM
-from framework import config
+from framework import config, exceptions
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +35,9 @@ class Deployment(object):
         Initializes the necessary variables needed for
         Noobaa Standalone Deployment
         """
-        self.rpm_url = config.ENV_DATA["noobaa_sa"]
+        self.rpm_url = config.ENV_DATA.get("noobaa_sa")
+        if not self.rpm_url:
+            self.rpm_url = self.get_latest_rpm()
 
     def install_rpm(self):
         """
@@ -39,6 +45,45 @@ class Deployment(object):
         """
         rpm_path = download_rpm(rpm_url=self.rpm_url)
         install_rpm(rpm_path=rpm_path)
+
+    def get_latest_rpm(self):
+        """
+        Fetch latest RPM for Noobaa SA
+
+
+        """
+        # Fetch XML content from the URL
+        s3_rpm_base_url = config.DEPLOYMENT["rpm_s3_base_url"]
+        response = requests.get(s3_rpm_base_url)
+
+        if response.status_code == 200:
+            root = ET.fromstring(response.content)
+            latest_file_name = ""
+            latest_file_date = datetime.min
+            pattern = rf"{config.DEPLOYMENT['rpm_pattern']}"
+            regex = re.compile(pattern)
+            query_base = "{http://s3.amazonaws.com/doc/2006-03-01/}"
+            for content in root.findall(f"{query_base}Contents"):
+                key = content.find(f"{query_base}Key").text
+                last_modified = content.find(f"{query_base}LastModified").text
+                if regex.match(key):
+                    last_modified_date = datetime.strptime(
+                        last_modified, "%Y-%m-%dT%H:%M:%S.%fZ"
+                    )
+                    if last_modified_date > latest_file_date:
+                        latest_file_name = key
+                        latest_file_date = last_modified_date
+            if latest_file_name:
+                log.info(f"Latest RPM: {latest_file_name}")
+                return f"{s3_rpm_base_url}/{latest_file_name}"
+            else:
+                raise exceptions.rpmNotFoundError(
+                    f"No RPM matching expression: {pattern}"
+                )
+        else:
+            raise exceptions.rpmNotFoundError(
+                f"Failed to fetch XML content from the URL: {s3_rpm_base_url}"
+            )
 
 
 class DeploymentNSFS(Deployment):
@@ -78,7 +123,9 @@ class DeploymentNSFS(Deployment):
         start_service(name=self.noobaa_nsfs_service, use_sudo=True)
 
         # checks noobaa_nsfs service
-        is_nsfs_running = is_service_running(name=self.noobaa_nsfs_service, use_sudo=True)
+        is_nsfs_running = is_service_running(
+            name=self.noobaa_nsfs_service, use_sudo=True
+        )
         if not is_nsfs_running:
             raise ServiceRunningFailed("noobaa nsfs service is not running")
 
