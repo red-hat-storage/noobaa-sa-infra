@@ -4,7 +4,10 @@ import re
 import requests
 import time
 from datetime import datetime
+
 import xml.etree.ElementTree as ET
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 
 from common_ci_utils.command_runner import exec_cmd
 from common_ci_utils.exceptions import (
@@ -19,6 +22,7 @@ from common_ci_utils.postgres_utils import enable_postgresql_version
 from common_ci_utils.rpm_manager import install_rpm
 from common_ci_utils.service_manager import is_service_running, start_service
 from common_ci_utils.templating import Templating
+from common_ci_utils.url_utils import get_html_content
 from deployment.npm import NPM
 from framework import config, exceptions
 
@@ -35,33 +39,102 @@ class Deployment(object):
         Initializes the necessary variables needed for
         Noobaa Standalone Deployment
         """
-        self.rpm_url = config.ENV_DATA.get("noobaa_sa")
+        self.rpm_url = config.ENV_DATA.get("noobaa_sa", "")
+        upstream = (
+            config.DEPLOYMENT["upstream"] or
+            config.DEPLOYMENT["upstream_rpm_s3_base_url"] in self.rpm_url
+        )
+        if config.DEPLOYMENT["downstream_rpm_base_url"] in self.rpm_url:
+            upstream = False
+
+        if upstream:
+            self.username = None
+            self.password = None
+        else:
+            self.username = config.DEPLOYMENT["rpm_auth_username"]
+            self.password = config.DEPLOYMENT["rpm_auth_password"]
         if not self.rpm_url:
-            self.rpm_url = self.get_latest_rpm()
+            if config.DEPLOYMENT["upstream"]:
+                self.rpm_url = self.get_latest_upstream_rpm()
+            else:
+                self.rpm_url = self.get_latest_downstream_rpm()
+
 
     def install_rpm(self):
         """
         Install rpm
         """
-        rpm_path = download_rpm(rpm_url=self.rpm_url)
+        rpm_path = download_rpm(self.rpm_url, self.username, self.password)
         install_rpm(rpm_path=rpm_path)
 
-    def get_latest_rpm(self):
+
+    def get_latest_downstream_rpm(self):
         """
-        Fetch latest RPM for Noobaa SA
+        Fetch latest downstream RPM for Noobaa SA
+        """
+        # Parse the HTML content
+        url = urljoin(
+            config.DEPLOYMENT["downstream_rpm_base_url"],
+            config.DEPLOYMENT["downstream_rpm_artifactory_path"]
+        )
+        html_content = get_html_content(url, self.username, self.password)
+        soup = BeautifulSoup(html_content, 'html.parser')
+        latest_package = None
+        latest_date = None
+
+        # Find all <a> tags within the <pre> tag
+        for a_tag in soup.find_all('pre')[1].find_all('a'):
+            href = a_tag.get('href')
+            text = a_tag.next_sibling.strip()
+            # Check if the href contains 'noobaa-core'
+            if 'noobaa-core' in href and f"el9" in href:
+                # Extract the date from the text
+                date_str = ' '.join(text.split()[:2])
+                date_obj = datetime.strptime(date_str, '%d-%b-%Y %H:%M')
+                # Update the latest package and date if this one is newer
+                if latest_date is None or date_obj > latest_date:
+                    latest_date = date_obj
+                    latest_package = href
+        rpm_base_url = urljoin(url, latest_package)
+        all_rpms_html = get_html_content(rpm_base_url, self.username, self.password)
+        soup = BeautifulSoup(all_rpms_html, 'html.parser')
+        regex = self.get_rpm_pattern()
+        rpm_name = soup.find('a', href=regex)
+        if rpm_name:
+            package_url = rpm_name['href']
+            return urljoin(rpm_base_url, package_url)
+        else:
+            raise exceptions.rpmNotFoundError(
+                f"noobaa-core RPM not found in URL: {package_url}!"
+            )
 
 
+    def get_rpm_pattern(self):
+        """
+        Get rendered regexp pattern for RPM
+
+        Returns:
+            re.Pattern: to match RPM with
+        """
+        formatted_pattern_string = config.DEPLOYMENT['rpm_pattern'].format(
+            rhel_version=config.DEPLOYMENT["rpm_rhel_version"],
+            arch=config.DEPLOYMENT["rpm_arch"],
+        )
+        return re.compile(rf"{formatted_pattern_string}")
+
+    def get_latest_upstream_rpm(self):
+        """
+        Fetch latest upstream RPM for Noobaa SA
         """
         # Fetch XML content from the URL
-        s3_rpm_base_url = config.DEPLOYMENT["rpm_s3_base_url"]
+        s3_rpm_base_url = config.DEPLOYMENT["upstream_rpm_s3_base_url"]
         response = requests.get(s3_rpm_base_url)
 
         if response.status_code == 200:
             root = ET.fromstring(response.content)
             latest_file_name = ""
             latest_file_date = datetime.min
-            pattern = rf"{config.DEPLOYMENT['rpm_pattern']}"
-            regex = re.compile(pattern)
+            regex = self.get_rpm_pattern()
             query_base = "{http://s3.amazonaws.com/doc/2006-03-01/}"
             for content in root.findall(f"{query_base}Contents"):
                 key = content.find(f"{query_base}Key").text

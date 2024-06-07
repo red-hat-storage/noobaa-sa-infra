@@ -15,5 +15,12 @@ DEPLOYMENT:
   backing_store_drive_path: "/usr/local/noobaa-core/storage/backingstores"
   backing_store_drive_prefix: "drive"
   backing_store_drive_port: 9990
-  rpm_s3_base_url: "https://noobaa-core-rpms.s3.amazonaws.com"
-  rpm_pattern: "noobaa-core-.*\\.el9\\.x86_64\\.rpm"
+  upstream_rpm_s3_base_url: "https://noobaa-core-rpms.s3.amazonaws.com"
+  upstream: false  # Update to true if you want automatic upstream rpm find
+  rpm_rhel_version: 9
+  rpm_arch: "x86_64"
+  rpm_pattern: "noobaa-core-.*\\.el{rhel_version}\\.{arch}\\.rpm"
+  downstream_rpm_base_url: "https://na.artifactory.swg-devops.com"
+  downstream_rpm_artifactory_path:  'artifactory/sys-ceph-team-rpm-local/unsigned/'
+  # rpm_auth_username: username required for download RPM
+  # rpm_auth_password: password required for download RPM
